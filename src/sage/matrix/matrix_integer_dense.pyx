@@ -117,6 +117,81 @@ fplll_fp_map = {None: None,
                 'rr': 'mpfr'}
 
 
+class GraverBasis:
+    r"""
+    Wrapper for the Graver basis of an integer matrix computed by 4ti2.
+
+    EXAMPLES::
+
+        sage: # optional - 4ti2
+        sage: A = matrix(ZZ, [[1, 2, 3]])
+        sage: G = A.graver_basis()
+        sage: len(G)
+        5
+        sage: sorted(tuple(v) for v in G)
+        [(0, 3, -2), (1, -2, 1), (1, 1, -1), (2, -1, 0), (3, 0, -1)]
+    """
+    def __init__(self, A):
+        """
+        INPUT:
+
+        - ``A`` -- integer matrix
+        """
+        from sage.interfaces.four_ti_2 import four_ti_2
+        self._matrix = A
+        self._basis_matrix = four_ti_2.graver(mat=A)
+        self._elements = tuple(self._basis_matrix.rows())
+
+    def __iter__(self):
+        """
+        Iterate over the Graver vectors.
+        """
+        return iter(self._elements)
+
+    def __len__(self):
+        """
+        Return the number of Graver vectors.
+        """
+        return len(self._elements)
+
+    def __getitem__(self, i):
+        """
+        Return the ``i``-th Graver vector.
+        """
+        return self._elements[i]
+
+    def orthogonal_range_search(self, l, u):
+        r"""
+        Return Graver vectors between lower and upper bounds.
+
+        INPUT:
+
+        - ``l`` -- lower bound vector
+        - ``u`` -- upper bound vector
+
+        OUTPUT: a generator of vectors `g` with `l_i \leq g_i \leq u_i`
+        for all coordinates.
+
+        EXAMPLES::
+
+            sage: # optional - 4ti2
+            sage: A = matrix(ZZ, [[1, 2, 3]])
+            sage: G = A.graver_basis()
+            sage: sorted(tuple(v) for v in G.orthogonal_range_search((0, -2, -1), (2, 2, 1)))
+            [(1, -2, 1), (1, 1, -1), (2, -1, 0)]
+        """
+        from sage.modules.free_module_element import vector
+
+        l = vector(ZZ, l)
+        u = vector(ZZ, u)
+        n = self._matrix.ncols()
+        if len(l) != n or len(u) != n:
+            raise ValueError(f"bounds must both have length {n}")
+
+        return (g for g in self._elements
+                if all(l[i] <= g[i] <= u[i] for i in range(n)))
+
+
 cdef class Matrix_integer_dense(Matrix_dense):
     r"""
     Matrix over the integers, implemented using FLINT.
@@ -5501,6 +5576,23 @@ cdef class Matrix_integer_dense(Matrix_dense):
         fmpz_get_mpz(g.value,tmpgcd)
         fmpz_clear(tmpgcd)
         return g
+
+    def graver_basis(self):
+        r"""
+        Return the Graver basis of this integer matrix.
+
+        The result is computed by 4ti2 and wrapped as a
+        :class:`GraverBasis`.
+
+        EXAMPLES::
+
+            sage: # optional - 4ti2
+            sage: A = matrix(ZZ, [[1, 2, 3]])
+            sage: G = A.graver_basis()
+            sage: sorted(tuple(v) for v in G)
+            [(0, 3, -2), (1, -2, 1), (1, 1, -1), (2, -1, 0), (3, 0, -1)]
+        """
+        return GraverBasis(self)
 
     def _change_ring(self, ring):
         """
