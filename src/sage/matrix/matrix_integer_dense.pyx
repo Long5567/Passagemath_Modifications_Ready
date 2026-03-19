@@ -169,7 +169,7 @@ class GraverBasis:
         - ``l`` -- lower bound vector
         - ``u`` -- upper bound vector
 
-        OUTPUT: a generator of vectors `g` with `l_i \leq g_i \leq u_i`
+        OUTPUT: a finite set of vectors `g` with `l_i \leq g_i \leq u_i`
         for all coordinates.
 
         EXAMPLES::
@@ -177,10 +177,16 @@ class GraverBasis:
             sage: # optional - 4ti2
             sage: A = matrix(ZZ, [[1, 2, 3]])
             sage: G = A.graver_basis()
-            sage: sorted(tuple(v) for v in G.orthogonal_range_search((0, -2, -1), (2, 2, 1)))
+            sage: S = G.orthogonal_range_search((0, -2, -1), (2, 2, 1))
+            sage: S.category()
+            Category of finite enumerated sets
+            sage: S.cardinality()
+            3
+            sage: sorted(tuple(v) for v in S)
             [(1, -2, 1), (1, 1, -1), (2, -1, 0)]
         """
         from sage.modules.free_module_element import vector
+        from sage.sets.set import Set
 
         l = vector(ZZ, l)
         u = vector(ZZ, u)
@@ -188,8 +194,8 @@ class GraverBasis:
         if len(l) != n or len(u) != n:
             raise ValueError(f"bounds must both have length {n}")
 
-        return (g for g in self._elements
-                if all(l[i] <= g[i] <= u[i] for i in range(n)))
+        return Set(g for g in self._elements
+                   if all(l[i] <= g[i] <= u[i] for i in range(n)))
 
 
 cdef class Matrix_integer_dense(Matrix_dense):
